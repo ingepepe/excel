@@ -1,0 +1,50 @@
+// Put all values of a two-dimensional range into a single column
+ARRAYITEMS = LAMBDA(range, [unique_values],
+    LET(values_string, TEXTJOIN(",",TRUE,range),
+        values_array, FILTERXML("<x><y>"&SUBSTITUTE(values_string,",","</y><y>")&"</y></x>","//y"),
+        IF(unique_values, UNIQUE(values_array), values_array)
+    )
+);
+
+// mode = 1 : append to the right
+APPENDARRAYS = LAMBDA(range1, range2, [mode],
+    LET(
+        row_index, IF(
+            mode = 1,
+            SEQUENCE(MAX(ROWS(range1),ROWS(range2)),1),
+            SEQUENCE(ROWS(range1)+ROWS(range2),1)
+        ),
+        col_index, IF(
+            mode = 1,
+            SEQUENCE(1,COLUMNS(range1)+COLUMNS(range2)),
+            SEQUENCE(1,MAX(COLUMNS(range1),COLUMNS(range2)))
+        ),
+        append, IF(
+            mode = 1,
+            IF(
+                col_index <= COLUMNS(range1),
+                INDEX(range1, row_index, col_index),
+                INDEX(range2, row_index, col_index - COLUMNS(range1))
+            ),
+            IF(
+                row_index <= ROWS(range1),
+                INDEX(range1, row_index, col_index),
+                INDEX(range2, row_index - ROWS(range1), col_index)
+            )
+        ),
+        IFERROR(append,"")
+    )
+);
+
+// Take to ranges and compare side by side (N rows x 2 columns) what values are shared by each or held by only one of them. 
+COMPAREARRAYVALUES = LAMBDA(left_side_array, right_side_array, [left_side_header], [right_side_header],
+    LET(
+        unique_left, ARRAYITEMS(left_side_array, 1),
+        unique_right, ARRAYITEMS(right_side_array, 1),
+        unique_both, UNIQUE(SORT(APPENDARRAYS(left_side_array, right_side_array))),
+        compared_left, IFERROR(XLOOKUP(unique_both, unique_left, unique_left),""),
+        compared_right, IFERROR(XLOOKUP(unique_both, unique_right, unique_right),""),
+        side_by_side, APPENDARRAYS(compared_left, compared_right,1),
+        side_by_side
+    )
+);
