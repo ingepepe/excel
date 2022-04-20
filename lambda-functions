@@ -49,15 +49,81 @@ COMPAREARRAYVALUES = LAMBDA(left_side_array, right_side_array, [left_side_header
     )
 );
 
+IFBLANK = LAMBDA(value, value_if_blank, IF(ISBLANK(value), value_if_blank, value));
+
+example = IFBLANK(, "Blank");
+
 STRINGTOARRAY = LAMBDA(string_to_array,
     MID(string_to_array,SEQUENCE(LEN(string_to_array)),1)
 );
 
-GETALPHANUMERIC = LAMBDA(string_to_check_for_alphanumeric,
+// sort: 1 for ascending, -1 for descending, blank for no sort
+UNIQUECHARS = LAMBDA(strings_of_different_characters, [sort],
     LET(
-        valid_chars, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-        chars_to_validate, STRINGTOARRAY(string_to_check_for_alphanumeric),
-        valid_extract,  TEXTJOIN("", TRUE, (IFERROR(MID(valid_chars,FIND(chars_to_validate, valid_chars),1),""))),
+        base, TEXTJOIN("", TRUE, strings_of_different_characters),
+        chars, STRINGTOARRAY(base),
+        unique_chars, UNIQUE(chars),
+        sorted_chars, SWITCH(sort,
+            1, SORT(unique_chars,1,1),
+            -1, SORT(unique_chars,1,-1),
+            unique_chars),
+        joined_chars, TEXTJOIN("", TRUE, sorted_chars),
+        joined_chars
+    )
+);
+
+// mode default/blank/0: all, 1: numbers only  2: letters only, 3: upper-case only, 4: lower-case only
+EXTRACTCHARS = LAMBDA(string_to_extract_from, [mode], [additional_chars],
+    LET(
+        numbers, "0123456789",
+        uppers, "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        lowers, "abcdefghijklmnopqrstuvwxyz",
+        others, IF(ISOMITTED(additional_chars),"", UNIQUECHARS(additional_chars,1)),
+        valid_chars, SWITCH(mode,
+            1, CONCAT(numbers,others),
+            2, CONCAT(uppers,lowers,others),
+            3, CONCAT(uppers,others),
+            4, CONCAT(lowers,others),
+            CONCAT(numbers,uppers,lowers,others)),
+        chars_to_validate, STRINGTOARRAY(string_to_extract_from),
+        valid_extract, TEXTJOIN("", TRUE, (IFERROR(MID(valid_chars,FIND(chars_to_validate, valid_chars),1),""))),
         valid_extract
+    )
+);
+
+// Returns a binary string where 1s indicate a match and 0s indicate no match. It's case-sensitive.
+// For example, VALIDATECHARS("ABCabc123", "3Ab") returns "100010001"
+VALIDATECHARS = LAMBDA(base_string, valid_chars,
+    LET(
+        valids, UNIQUECHARS(valid_chars),
+        base_array, STRINGTOARRAY(base_string),
+        match_chars, IFERROR(FIND(base_array,valids),0),
+        binary_array, IFERROR(match_chars/match_chars,0),
+        binary_string, TEXTJOIN("", FALSE, binary_array),
+        binary_string
+    )
+);
+
+//Converts a 15-char case-sensitive Salesforce ID into an 18-char case-resilient ID
+SALESFORCESAFEID = LAMBDA(sfId,
+    LET(
+        uppers, "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        sf_chars, "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345",
+        next_segment, SWITCH(LEN(sfId),
+            15, MID(sfId, 1, 5),
+            16, MID(sfId, 6, 5),
+            17, MID(sfId, 11, 5),
+            ""),
+        IF(LEN(next_segment)=5,
+            LET(
+                uppers_in_segment, VALIDATECHARS(next_segment,uppers),
+                next_position_binary, TEXTJOIN("", true, MID(uppers_in_segment, {5,4,3,2,1}, 1)),
+                next_position, BIN2DEC(next_position_binary),
+                next_char, mid(sf_chars, next_position + 1, 1),
+                sfid_plus_char, CONCAT(sfId, next_char),
+                SALESFORCESAFEID(sfid_plus_char)
+            ),
+            sfId
+        )
     )
 );
