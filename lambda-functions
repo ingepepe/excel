@@ -53,8 +53,27 @@ IFBLANK = LAMBDA(value, value_if_blank, IF(ISBLANK(value), value_if_blank, value
 
 example = IFBLANK(, "Blank");
 
-STRINGTOARRAY = LAMBDA(string_to_array,
-    MID(string_to_array,SEQUENCE(LEN(string_to_array)),1)
+// if a delimiter is provided, the returned array will be a split of strings that ignores the segment length
+// if a segment length is specified, the array returned will be composed of items of that number of characters
+// For example, STRINGTOARRAY("abcdefghij",,4) will produce "abcd","efgh","ij"
+STRINGTOARRAY = LAMBDA(string_to_array, [delimiter], [segment_length],
+    LET(
+        chars_array,
+        IF( ISOMITTED(segment_length),
+            MID(string_to_array,SEQUENCE(LEN(string_to_array)),1),
+            IF( ISNUMBER(segment_length),
+                MID(string_to_array,SEQUENCE(ROUNDUP(LEN(string_to_array)/segment_length,0))*segment_length,segment_length),
+                "Invalid segment length"
+            )
+        ),
+        split_array,
+        IF( OR(ISNUMBER(SEARCH("s1>",delimiter)),ISNUMBER(SEARCH("t2>",delimiter))),
+            "Invalid delimiter",
+            FILTERXML( "<t2><s1>" & SUBSTITUTE(string_to_array,delimiter,"</s1><s1>") & "</s1></t2>","//s1")
+        ),
+        returned_array, IF(ISOMITTED(delimiter), chars_array, split_array),
+        returned_array
+    )
 );
 
 // sort: 1 for ascending, -1 for descending, blank for no sort
@@ -127,3 +146,4 @@ SALESFORCESAFEID = LAMBDA(sfId,
         )
     )
 );
+
