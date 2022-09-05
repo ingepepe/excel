@@ -1,8 +1,12 @@
 // Put all values of a two-dimensional range into a single column
-ARRAYITEMS = LAMBDA(range, [unique_values],
+ARRAYITEMS = LAMBDA(range, [unique_values], [sort_values],
     LET(values_string, TEXTJOIN(",",TRUE,range),
         values_array, FILTERXML("<x><y>"&SUBSTITUTE(values_string,",","</y><y>")&"</y></x>","//y"),
-        IF(unique_values, UNIQUE(values_array), values_array)
+        unique_values_array, IF(ISOMITTED(unique_values), values_array, UNIQUE(values_array)),
+        sorted_values_array, IF(ISOMITTED(sort_values), 
+            unique_values_array, 
+            IF(sort_values = -1, SORT(unique_values_array,,-1), SORT(unique_values_array))),
+        sorted_values_array
     )
 );
 
@@ -27,6 +31,7 @@ APPENDARRAYS = LAMBDA(range1, range2, [mode],
                 INDEX(range2, row_index, col_index - COLUMNS(range1))
             ),
             IF(
+                // is this if redundant?
                 row_index <= ROWS(range1),
                 INDEX(range1, row_index, col_index),
                 INDEX(range2, row_index - ROWS(range1), col_index)
