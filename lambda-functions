@@ -129,6 +129,7 @@ VALIDATECHARS = LAMBDA(base_string, valid_chars,
 );
 
 //Converts a 15-char case-sensitive Salesforce ID into an 18-char case-resilient ID
+//Requires VALIDATECHARS
 SALESFORCESAFEID = LAMBDA(sfId,
     LET(
         uppers, "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
